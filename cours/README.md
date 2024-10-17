@@ -125,3 +125,70 @@
 - Chaque entrée référence un (ou plusieurs) enregistrements du chier de données : celui (ceux) ayant la même valeur de clé
 que l'entrée
 ![alt text](../assets/images/ex-arbre.png)
+- Un n÷ud interne est un index non dense local, les enregistrements servant de clé, intercalés avec des pointeurs.
+![alt text](../assets/images/comp-noeud.png)
+
+- Recherche: ..... ( *à compléter* )
+
+
+## Le hachage
+
+- Concurrent avec l'arbre B+
+    - Meilleur (un peu, et en théorie) pour les recherches par clé
+    - N'occupe aucune place
+    - Se réorganise difficilement
+    - Ne supporte pas les recherches par intervalle
+
+- Principle: Le stockage est organisé en **N fragments (buckets)** constitués de séquences de blocs.
+    - La répartition des enregistrements se fait par un **calcul**
+    - Une **fonction de hachage h**: **prend une valeur de clé en entrée** et **retourne une adresse de fragment en sortie**
+
+- Recherche compatible:
+    - Par clé , **Oui**
+        *SELECT * FROM Film WHERE titre = 'Impitoyable'*
+    - Par préfixe ? **Non**
+        *SELECT * FROM Film WHERE titre LIKE 'Mat%'*
+    - Par intervalle : **non !** 
+        *SELECT *
+        FROM Film
+        WHERE titre BETWEEN 'Annie Hall' AND 'Easy Rider'*
+
+- Difficulté: si une majorité de films commence par **une même lettre** (*'L' par exemple*) la répartition va être déséquilibrée.
+
+## Le hashage extensible
+- Principe la fonction de hachage h est fixe, mais on utilise les **n premiers bits** du
+résultat h(c) pour s'adapter à la taille de la collection.
+
+- Contriantes:
+    - Nombre d'entrées dans le répertoire est une puissance de 2
+    - Fonction h donne toujours un entier sur 4 octets (32 bits)
+
+
+# Execution - Optimisation requetes
+
+- Une requête SQL est **déclarative**. Elle ne dit pas comment calculer le résultat
+- Dans un SGBD le *programme* qui exécute une requête est appelé **plan d'exécution**.
+- **Plan execution**: c'est un **arbre**, constitué *d'opérateurs*.
+- Deux étapes :
+    - (A) plan d'exécution **logique** (l'algèbre) ;
+    - (B) plan d'exécution **physique** (opérateurs).
+    ![alt text](../assets/images/planexec.png)
+- Optimisation: À chaque étape, plusieurs choix. Le système les évalue et choisit le meilleur.
+![](../assets/images/opti.png)
+
+
+## Operateur physiques:
+
+- **Operateur**: 
+    - Forme **generique**:
+    - Avoir un tache
+    - **Bloquant** et **non bloquant**
+- Blocage: 
+    - **Materielisation**: stocker le résultat d'une requête intermédiaire
+    ![](../assets/images/materialisation.png)
+    - **Pipelinage**: 
+    ![](../assets/images/streaming.png)
+    - **Temps réponse, temps d'execution**:
+    ![](../assets/images/temp.png)
+
+## Some Operateur:
