@@ -192,3 +192,24 @@ résultat h(c) pour s'adapter à la taille de la collection.
     ![](../assets/images/temp.png)
 
 ## Some Operateur:
+
+### IndexScan
+- Implementation
+![](../assets/images/imp_par_index.png)
+- Execution:
+![](../assets/images/index-par.png)
+
+### DirectAccess
+- Implementation:
+    - open(): Rien à faire
+    - next(): Recoit addresse, access le bloc, utilise address local pour trouver le tuple et retourne un n-uplet
+
+### Tri par fusion
+![Tri par fusion](../assets/images/tri-fus.png)
+- Operation:
+    - Non bloquant
+    - open(): Produire resultats ( Collection des tuples trié (*Sur disque ou memoire ?* ) )
+    - next(): ne fait que lire, un à un, les tuples dans le résultat du tri
+
+
+### Jointure
