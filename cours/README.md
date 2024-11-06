@@ -727,6 +727,14 @@ Types de verrous:
 
 ## Project
 
+
+## Hachage
+![alt text](image-102.png)
+![alt text](image-103.png)
+![alt text](image-104.png)
+![alt text](image-105.png)
+![alt text](image-106.png)
+
 ## Optimisation request
 - En appliquant la requête à la base Minus, vous devriez obtenir un plan d'exécution de la forme
  Parcours séquentiel de film (temps de réponse:0.00 ; temps d'exécution:7.10 ; nombre de nuplets:20 ; mémoire allouée:15)
@@ -1311,3 +1319,8 @@ Après un commit ou un rollback de T2, une nouvelle transaction commence. Si ell
 Finalement, mettez-vous en mode SERIALIZABLE et refaites le troisième exercice. Voyez-vous une différence?
 
 En mode SERIALIZABLE, l'isolation des lectures est identique à celle du mode REPEATABLE READ. Ce mode se distingue par un niveau de protection complémentaire contre des séquences combinant lectures et mises à jour.
+
+# Exam
+
+Question 1.0: La requête calcule tous les titres des films réalisé par Hitchcock 
+Question 1.1: 
