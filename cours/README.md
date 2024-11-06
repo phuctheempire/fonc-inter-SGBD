@@ -463,20 +463,72 @@ Exemple:
 ## Some Operateur:
 
 ### IndexScan
+**Return an address** ( of a block on disk )
 - Implementation
 ![](../assets/images/imp_par_index.png)
 - Execution:
 ![](../assets/images/index-par.png)
 - Code:
 ![alt text](image-25.png)
+![alt text](image-26.png)
 
 ### DirectAccess
+It **take an address** and access directly, **return a tuple**
 - Implementation:
     - open(): Rien à faire
     - next(): Recoit addresse, access le bloc, utilise address local pour trouver le tuple et retourne un n-uplet
+![alt text](image-27.png)
+![alt text](image-28.png)
+![](image-29.png)
+
+### Filter
+Il prends une tuple et retourne une tuple
+![alt text](image-33.png)
+
+### Exemple
+![alt text](image-30.png)
+![alt text](image-31.png)
+![alt text](image-32.png)
+
+### Question
+L'opérateur de parcours d'index IndexScan fournit, à chaque appel next()
+R0 un n-uplet
+R1 l'ensemble des n-uplets du résultat
+R2 l'adresse d'un n-uplet
+R3 l'ensemble des adresses des n-uplets du résultat
+
+Soit la requête Select count(*) from Film where annee between 2015 and 2020. Cette requête a besoin d'utiliser (outre le calcul de l'agrégat) :
+R0 indexscan
+R1 direct access
+R2 indexscan et direct access
+
+Dans le plan d'exécution suivant, peut-on inverser les opérateurs d'accès direct et de filtre ?
+R0 oui
+R1 non
 
 ### Tri par fusion
-![Tri par fusion](../assets/images/tri-fus.png)
+- Concept
+    ![Tri par fusion](../assets/images/tri-fus.png)
+    - Given the fichier of B blocks
+    - Given the memory capaciry of M blocks
+    - The fichier is divided to n = B/M fragments
+    - For n fragments, the memory read from the disk ( **1 lecture complet** ), sort ( quicksort ) and write back to the disk ( **1 ecriture complet**)
+    - We take the first block of each fragment ( we take the first element of all fragments if the number of fragment is smaller than M, we take the first element of just M-1 fragments if the number of fragments is greater or equal to M ) and put them in the memory. ( **1 lecture complet**)
+    - We find the smallest element and return ( if the number of fragment is smaller than M ) or write it back to the disk ( if the number of fragment is greater or equal to M (**1 ecriture complet**) ). We take the next element from the fragment that contains the smallest element and put it in the memory. We repeat the process until we finish all the elements.
+    - We repete until there is only one fragment.
+    - Number of read/write:
+        - Initialisation, quicksort: 1 lecture complet.
+        - For each merge sort: 1 ecriture complet, 1 lecture complet
+    - Taille:
+        - Fichier a: n = B/M fragments
+        - Donc on a besoin de k = logM-1(n) fois de fusionner les fragments
+        - Taille maximale de chaque fragment après le merge sort numero i:
+            - i = 0: M
+            - i = 1: M(M-1)
+            - i = 2: M(M-1)^2
+            - i = k: M(M-1)^k = Mxn ( *le fichier est trié* )
+    - Total number of read and write: 1 lecture + k ecriture + k lecture = 1 lecture + 2logM-1(n) ecriture + 2logM-1(n) lecture
+
 - Operation:
     - Non bloquant
     - open(): Produire resultats ( Collection des tuples trié (*Sur disque ou memoire ?* ) )
@@ -484,3 +536,778 @@ Exemple:
 
 
 ### Jointure
+- Jointure avec index
+    - Algorithme de jointure par boucles imbriquées indexées.
+- Jointure sans index
+    - Le plus simple : boucles imbriquées (non indexée).
+    - Le plus courant : jointure par tri-fusion.
+    - Plus sophistiqué : la jointure par hachage.
+
+#### Jointure index:
+![alt text](image-34.png)
+![alt text](image-35.png)
+Avantages :
+- Efficace (un parcours, plus des recherches par adresse)
+- Favorise le temps de réponse et le temps d'exécution
+
+#### Jointure boucle imbriqué:
+![alt text](image-36.png)
+
+#### Jointure par tri-fusion:
+Plus effcace que les boucles imbriquées pour de grosses tables.
+- On trie les deux tables sur les colonnes de jointures
+- On effectue la fusion
+
+Opérateur **bloquant**: on ne peut rien obtenir tant que le tri n'est pas fini.
+![alt text](image-37.png)
+Illustration
+![alt text](image-38.png)
+Operator
+![alt text](image-39.png)
+
+
+#### Jointure par hachage:
+![alt text](image-40.png)
+![alt text](image-43.png)
+![alt text](image-44.png)
+![alt text](image-45.png)
+![alt text](image-46.png)
+![alt text](image-47.png)
+Un opérateur potentiellement coûteux. Quelques principes généraux :
+- Si une table tient en mémoire : jointure par boucle imbriquées, ou hachage.
+- Si au moins un index est utilisable : jointure par boucle imbriquées indexée.
+- Si une des deux tables beaucoup plus petite que l'autre : jointure par hachage.
+- Sinon : jointure par tri-fusion.
+
+Décision très complexe, prise par la système en fonction des statistiques.
+
+## Plan d'execution
+Toute requête SQL est traitée en trois étapes :
+- Analyse et traduction de la requête. On vérifie qu'elle est correcte, et on l'exprime sous forme d'opérations.
+- Optimisation : comment agencer au mieux les opérations, et quels algorithmes utiliser. On obtient un plan d'exécution.
+- Exécution de la requête : le plan d'exécution est compilé et exécuté.
+
+Le traitement s'appuie sur les éléments suivants :
+- Le schéma de la base, description des tables et chemins d'accès (dans le
+catalogue)
+- Des statistiques : taille des tables, des index, distribution des valeurs
+- Des opérateurs : il peuvent différer selon les systèmes
+Important : on suppose que le temps d'accès à ces informations est négligeable par
+rapport à l'exécution de la requête.
+
+![alt text](image-48.png)
+![alt text](image-49.png)
+![alt text](image-50.png)
+![alt text](image-51.png)
+![alt text](image-52.png)
+![alt text](image-53.png)
+![alt text](image-54.png)
+![alt text](image-55.png)
+![alt text](image-56.png)
+Traitement d'un bloc
+Plusieurs phases :
+- Analyse syntaxique : conformité SQL, conformité au schéma.
+- Analyse de cohérence : pas de clause comme annee < 2000 and annee > 2001
+Si OK, traduction en une expression algébrique, plus "opérationnelle" que SQL.
+
+*Toute requête SQL se réécrit en une expression de l'algèbre.*
+
+![alt text](image-57.png)
+![alt text](image-58.png)
+
+Est-ce que la phrase suivante est vraie : Comme SQL est déclaratif, je peux écrire la requête comme je veux (à plat ou avec des imbrications), j'aurais les mêmes n-uplets dans le résultat.
+R0 oui
+R1 non
+
+Est-ce que la phrase suivante est vraie : Comme SQL est déclaratif, je peux écrire la requête comme je veux (à plat ou avec des imbrications), le calcul prendra le même temps.
+R0 oui
+R1 non
+
+## Optimisation 
+Rôle de l'optimiseur :
+- Trouver les expressions équivalentes à une requête.
+- Les évaluer et choisir la meilleure.
+On convertit une expression en une expression équivalente en employant des règles de réécriture.
+
+![alt text](image-59.png)
+![alt text](image-60.png)
+![alt text](image-61.png)
+![alt text](image-62.png)
+![alt text](image-63.png)
+Le plan d'exécution
+![alt text](image-64.png)
+Et si j'indexe le nom du rôle ?
+![alt text](image-65.png)
+Et si j'indexe la clé étrangère ?
+![alt text](image-66.png)
+Et si je n'ai pas d'index ?
+![alt text](image-67.png)
+
+![alt text](image-68.png)
+![alt text](image-69.png)
+![alt text](image-70.png)
+
+# Transactions
+On appelle transaction un ensemble séquentiel cohérent d'opérations sur une base de données.
+
+Nombreuses transactions en parallèle. La durée d'une transaction peut être très courte (génération automatique)
+Besoin pour le SGBD d'être capable de les gérer. Eviter :
+- Pertes d'opérations / introduction d'incohérences
+- Observation d'incohérences
+- Lectures non reproductibles / lectures fantômes
+
+- Atomicité : Toutes les MAJ sont éxécutées ou aucune
+- Cohérence : Passer d'un état cohérent à un autre
+- Isolation : La transaction s'effectue comme si elle était seule
+- Durabilité : Une fois une transactions validée, son effet ne peut pas être perdu suite à une panne quelconque
+
+## Sériablilité
+- Une transaction = une séquence d'opérations.
+- Transactions sérielles = exécuter toute la transaction T1 puis T2 etc… = pas de problème !
+- Deux opérations a et a', exécutées respectivement par deux transactions différentes T et T' sont dites **conflictuelles** si l'exécution des deux séquences a;a' (a puis a') et a';a (a' puis a) est susceptible de conduire à des résultats différents.
+![alt text](image-71.png)
+- L'ordonnancement: Un ordonnancement d'opérations de plusieurs transactions est composé d'opérations atomiques de type R ou W sur des données.
+Exemple:
+![alt text](image-72.png)
+Définition : Un ordonnancement A est **équivalent** à un ordonnancement A' ssi le résultat produit et observé est le même.
+Proposition : Si A' est un ordonnancement produit à partir d'un ordonnancement A en ne **permutant** que des opérations non conflictuelles alors A et A' sont équivalentes.
+
+Un ordonnancement est sérialisable si et seulement si : Il peut être transformé en un ordonnancement série par permutations successives d'opérations ne constituant pas une paire d'opérations conflictuelles.
+Une telle transformation, si elle est possible, fournit effectivement un ordonnancement série équivalent
+![alt text](image-73.png)
+
+- Graphe de précédence de l’exécution: sérialisable ou non
+    - Sur chaque objet, deux actions non permutables impliquent une relation de précédence entre les transactions correspondantes
+    - Décision : Graphe de précédence sans boucle  exécution sérialisable (il suffit de suivre les arcs) 
+
+## Verrouillage: Eviter Deadlock
+Phase 1 : Verrouillage
+- Lecture : Verrou « S » (Shared)
+- Ecriture : Verrou « X » (Exclusive)
+![alt text](image-75.png)
+![alt text](image-76.png)
+
+Verrou mortel (cycle) ou « Deadlock »: Transactions qui s’attendent mutuellement
+![alt text](image-77.png)
+
+Types de verrous:
+![alt text](image-78.png)
+![alt text](image-79.png)
+
+![alt text](image-80.png)
+![alt text](image-81.png)
+![alt text](image-82.png)
+![alt text](image-83.png)
+
+
+
+# TD
+
+## TD1
+![alt text](image-84.png)
+- Premier: Arbres B+ ( Recherche par intervalle )
+- Deuxième: Arbre B+, Hachage ( Plus optimal ssi ya une table qui est si petit qu'il contient dans mémoire )
+![alt text](image-85.png)
+![alt text](image-86.png)
+![alt text](image-87.png)
+![alt text](image-88.png)
+![alt text](image-89.png)
+![alt text](image-90.png)
+![alt text](image-91.png)
+![alt text](image-92.png)
+![alt text](image-93.png)
+![alt text](image-94.png)
+![alt text](image-95.png)
+![alt text](image-96.png)
+![alt text](image-97.png)
+![alt text](image-98.png)
+![alt text](image-99.png)
+![alt text](image-100.png)
+## TD2
+
+## Project
+
+## Optimisation request
+- En appliquant la requête à la base Minus, vous devriez obtenir un plan d'exécution de la forme
+ Parcours séquentiel de film (temps de réponse:0.00 ; temps d'exécution:7.10 ; nombre de nuplets:20 ; mémoire allouée:15)
+filter: (annee >= 2000) 
+Un index est-il utilisé pour ce plan d'exécution? **Non**
+- La table Film doit nécessairement être parcourue séquentiellement. **Non**
+- Est-ce qu'in index sur l'année améliore le temps d'exécution? **Pas forcément**
+- Déterminez les requêtes qui vont introduire un opérateur bloquant dans le plan d'exécution.
+    - select titre from Film order by annee
+    - **select max(annee) from Film where annee >= 2000**
+    - select annee - 2000 from Film
+    - **select annee, count(*) from Film group by annee**
+    - **select distinct annee from Film**
+- Quelle méthode emploie Postgres pour trouver les doublons et les éliminer?
+    - **Le hachage**
+    - Le tri
+    - Le parcours séquentiel
+    - La construction d'index
+- Quelle valeur nous confirme que l'opérateur est bloquant? **Le temps de réponse**
+- L'existence d'un index peut-elle éviter de recourir à un opérateur bloquant pour les requêtes ci-dessus? **Non**
+- Voici un ensemble de requêtes. Indiquez celles pour lesquelles il est possible d'utiliser un index. Rappelons que toutes les clés primaires sont indexées par un arbre B, que la clé primaire de Film est l'attribut id, et que la clé primaire de Rôle est la paire (id_film, id_acteur).
+    - **select * from Film where id=34**
+    - select * from Film where id_realisateur=65
+    - select * from Film where titre='Alien'
+    - **select * from Role where id_film=34 and id_acteur=65**
+    - **select * from Role where id_film=34**
+- Regardez le plan d'exécution pour la requête ``select * from Film where id+1=35`` sur la base Magnus. Que constate-t-on ? 
+**Postgres renonce à utiliser l'index.**
+
+## Projet
+![alt text](image-101.png)
+
+- Table simple
+```java
+public class TableSimple extends Instrumentation implements Operateur{
+	private Vector<Tuple> contenu;
+	int compteur = 0;
+	int taille = 0;
+	int range = 2;
+	long total;
+	public TableSimple() {
+		super("FullScan"+Instrumentation.number++);
+		this.contenu = new Vector<Tuple>();
+		this.total = 0;
+	}
+	public void randomize(int tuplesize, int tablesize) {
+		for(int i=0;i<tablesize;i++) {
+			Tuple t = new Tuple(tuplesize);
+			for(int j=0;j<tuplesize;j++) {
+				t.val[j]=(int)(Math.random()*this.range);
+			}
+			this.contenu.add(t);
+		}
+		this.taille = this.contenu.size();
+	}
+	public void open() {
+		this.start();
+		this.compteur = 0;
+		this.tuplesProduits = 0;
+		this.memoire = 0;
+		this.stop();
+	}
+	public Tuple next() {
+		this.start();
+		if(this.compteur<this.taille) {
+			Tuple t = this.contenu.elementAt(this.compteur++); 
+			this.produit(t);
+			this.stop();
+			return(t);
+		}
+		else {
+			this.stop();
+			return null;
+		}
+	}
+	public void close(){
+		this.total+=this.tuplesProduits;
+	}
+}
+```
+Table Disque
+```java
+public class TableDisque implements Operateur {
+	private String filePath= "";
+	private int taille = 0;
+	private int tupleSize = 0;
+	private int range = 100;
+	private int blockSize = 4;
+	private int blockCursor = 0;
+	private int memorySize = 3; // nombre de blocs
+	private TupPos[][] cache = new TupPos[memorySize][blockSize];
+	private Queue<Integer> q = new LinkedList<Integer>(); // pour g�rer les blocs en m�moire
+	private int currentMemoryBlock=0;
+	private FileWriter myWriter;
+	private FileReader myReader;
+	private Boolean start = true;
+	public int reads = 0;
+	public void open() {
+		this.openFile();
+		this.start = true;
+		q = new LinkedList<Integer>();
+		cache = new TupPos[memorySize][blockSize];
+	}
+	public void close(){
+		try {
+			this.myReader.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}	
+	public Tuple next() {
+		if(this.start || this.blockCursor == this.blockSize) {
+			this.readNextBlock();
+			this.blockCursor = 0;
+			this.start = false;
+		}
+		return(this.cache[this.currentMemoryBlock][this.blockCursor++]);			
+	}
+	public void openFile() {
+		try {
+			this.myReader = new FileReader(filePath);
+			this.taille = this.myReader.read(); // header : table size puis tuplesize
+			this.tupleSize = this.myReader.read(); // header : table size puis tuplesize			
+		}catch (IOException e) {
+		      System.out.println("Erreur de lecture");
+		      e.printStackTrace();
+		}		
+	}
+	public void readNextBlock() {
+		int i=0;
+		try {
+		if(q.size()<this.memorySize) {
+			this.currentMemoryBlock = q.size();
+			q.add(q.size());
+		}else {
+			int lastBlock = q.remove(); 
+			this.currentMemoryBlock = lastBlock;
+			q.add(lastBlock);
+		}
+		for(i=0;i<this.blockSize;i++) {
+			TupPos t = new TupPos(this.tupleSize);
+			for(int j=0;j<this.tupleSize;j++) {
+				t.val[j] = this.myReader.read();
+			}
+			if(t.val[0] != -1)
+				this.cache[this.currentMemoryBlock][i] = t;
+			else
+				this.cache[this.currentMemoryBlock][i] = null;
+		}
+		System.out.println ("Block read : "+this.currentMemoryBlock);
+		this.reads++;
+		}catch (IOException e) {
+				System.err.println("Erreur de lecture.");
+		}
+	}
+	public void randomize(int tuplesize, int tablesize) {
+		try {
+	    this.myWriter = new FileWriter(filePath); 
+		this.myWriter.write(tablesize); // header : table size puis tuplesize
+		this.myWriter.write(tuplesize); // header : table size puis tuplesize
+		for(int i=0;i<tablesize;i++) {
+			Tuple t = new Tuple(tuplesize);
+			for(int j=0;j<tuplesize;j++) {
+				t.val[j]=(int)(Math.random()*this.range);
+				this.myWriter.write(t.val[j]);
+			}
+		}
+        myWriter.close();
+        System.out.println("Table g�n�r�e");
+		this.taille = tablesize;
+		} catch (IOException e) {
+		      System.out.println("Erreur de cr�ation ou d'�criture de fichier.");
+		      e.printStackTrace();
+		}
+	}
+	public TupPos getTuple( int nb_bloc, int pos){
+		this.openFile();
+		try {
+//			for( int i = 0 ; i < this.memorySize; i++){
+//				for (int j = 0; j < this.blockSize; j++){
+//					if ( this.cache[i][j].index[0] == nb_bloc && this.cache[i][j].index[1] == pos){
+//						return this.cache[i][j];
+//					}
+//				}
+//			}
+		for ( int i = 0; i < (nb_bloc-1)*this.blockSize; i++ ){
+			for( int j = 0; j < this.tupleSize; j++) {
+				int temp = this.myReader.read();
+			}
+		}
+		for ( int i = 0 ; i < pos - 1; i++ ){
+			for( int j = 0; j < this.tupleSize; j++) {
+				int temp = this.myReader.read();
+			}
+		}
+		TupPos t = new TupPos(this.tupleSize);
+		t.index[0] = nb_bloc;
+		t.index[1] = pos;
+		for ( int i = 0 ; i < this.tupleSize; i++) {
+			t.val[i] = this.myReader.read();
+		}
+		return t;
+		}catch (IOException e) {
+			System.out.println("Erreur de lecture");
+			e.printStackTrace();
+		}
+		return null;
+	}
+}
+```
+- AVG
+```java
+public class AVG extends Instrumentation implements Operateur{
+
+    private int col;
+    private Operateur op1;
+
+    private Tuple avg;
+    int compteur = 0;
+
+    public AVG (Operateur op1, int col){
+        super("Avg"+Instrumentation.number++);
+        this.start();
+        this.op1 = op1;
+        this.col = col;
+        this.avg = null;
+        this.stop();
+
+    }
+    @Override
+    public void open(){
+        this.start();
+        this.op1.open();
+        this.tuplesProduits = 0;
+        this.memoire = 0;
+        Tuple temp = null;
+        int comp = 0;
+        int sum = 0 ;
+        while((temp = this.op1.next()) != null){
+            sum += temp.val[this.col];
+            comp ++;
+        }
+        if (comp != 0) {
+            this.avg = new Tuple(1);
+        }
+        this.avg.val[0] = (int) (sum / comp);
+        this.stop();
+    }
+    @Override
+    public Tuple next(){
+        this.start();
+        if(this.avg == null){
+            this.stop();
+            return null;
+        }
+        Tuple t = new Tuple(1);
+        t.val[0] = this.avg.val[0];
+        this.avg = null;
+        this.produit(t);
+        this.stop();
+        return t;
+    }
+    public void close(){
+        this.op1.close();
+    }
+    
+}
+```
+- DISTINCT
+```java
+public class Distinct extends Instrumentation implements Operateur{
+
+    private Vector<Tuple> temp;
+    private Operateur in;
+    long total;
+    public Distinct(Operateur in){
+        super("Distinct"+Instrumentation.number++);
+        this.in = in;
+        this.temp = new Vector<Tuple>(0);
+    }
+    @Override
+    public void open(){
+        this.start();
+        this.in.open();
+        this.tuplesProduits = 0;
+        this.memoire = 0;
+        this.stop();
+    };
+    public Tuple next(){
+        this.start();
+        Tuple t = null;
+        while ( (t = this.in.next()) != null ){
+            if ( is_Duplicated(this.temp, t)){
+                this.stop();
+                return this.next();
+            } else{
+                this.produit(t);
+                this.temp.add(t);
+                this.stop();
+                return t;
+            }
+        }
+        this.stop();
+        return t;
+    };
+    public void close(){
+        this.in.close();
+    };
+    private boolean ligne_identique( Tuple t1, Tuple t2){
+        for( int i = 0; i < t1.size; i++ ){
+            if ( t1.val[i] != t2.val[i]){
+                return false;
+            }
+        }
+        return true;
+    }
+    private boolean is_Duplicated( Vector<Tuple> v, Tuple t){
+        if (v == null){
+            return false;
+        }
+        for ( int i = 0 ; i< v.size(); i++){
+            if ( ligne_identique(v.elementAt(i), t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+```
+- Boucle imbriqué
+```java
+public class DBI extends Instrumentation implements Operateur {
+	Operateur op1;
+	Operateur op2;
+	int col1;
+	int col2;
+	boolean nouveauTour;
+	Tuple t1;
+	Tuple t2;
+	
+	public DBI(Operateur o1, Operateur o2, int c1, int c2) {
+		super("DBI"+Instrumentation.number++);
+		this.op1 = o1;
+		this.op2 = o2;
+		this.col1 = c1;
+		this.col2 = c2;
+	}
+	public void open() {
+		this.start();
+		this.op1.open();
+		this.nouveauTour = true;
+		this.t1=null;
+		this.t2=null;
+		this.stop();
+	}
+	public Tuple next() {
+		this.start();
+		if(nouveauTour) {
+			while((t1=this.op1.next())!=null) {
+				this.op2.open();
+				nouveauTour = false;
+				while((t2=this.op2.next())!=null) {
+					if(t1.val[this.col1]==t2.val[this.col2]) {
+						Tuple ret = new Tuple(t1.val.length+t2.val.length);
+						for(int i=0;i<t1.val.length;i++)
+							ret.val[i]=t1.val[i];
+						for(int i=0;i<t2.val.length;i++)
+							ret.val[i+t1.val.length]=t2.val[i];
+						this.produit(ret);
+						this.stop();
+						return ret;
+					}
+					// sinon on continue la boucle	
+				}
+				nouveauTour = true;
+			}
+			this.stop();
+			return null;
+		}
+		// pas nouveau tour
+		else {
+			while((t2=this.op2.next())!=null) {
+				if(t1.val[this.col1]==t2.val[this.col2]) {
+					Tuple ret = new Tuple(t1.val.length+t2.val.length);
+					for(int i=0;i<t1.val.length;i++)
+						ret.val[i]=t1.val[i];
+					for(int i=0;i<t2.val.length;i++)
+						ret.val[i+t1.val.length]=t2.val[i];
+					this.produit(ret);
+					this.stop();
+					return ret;
+				}
+				// sinon on continue la boucle	
+			}
+			nouveauTour = true;
+			this.stop();
+			return this.next();
+		}
+	}
+	
+	public void close(){
+		this.op1.close();
+		this.op2.close();
+	}
+}
+```
+- MIN
+```java
+public class Min extends Instrumentation implements Operateur {
+	private int col;
+	private Operateur in;
+	private Tuple tempValMin;
+	public Min(Operateur _in, int _col) {
+		super("Min"+Instrumentation.number++);
+		this.start();
+		this.col = _col;
+		this.in = _in;
+		this.tempValMin = null;
+		this.stop();
+	}
+	@Override
+	public void open() {
+		this.start();
+		this.in.open();
+		this.tuplesProduits = 0;
+		this.memoire = 0;
+		Tuple temp = null;
+		this.tempValMin = this.in.next();
+		while((temp = this.in.next())!=null) {
+			if(temp.val[this.col] < this.tempValMin.val[this.col]) {
+				this.tempValMin = temp;
+			}
+		}
+		this.stop();
+	}
+	@Override
+	public Tuple next() {
+		this.start();
+		if(this.tempValMin == null) {
+			this.stop();
+			return null;
+		}else {
+			Tuple ret = new Tuple(1);
+			ret.val[0] = this.tempValMin.val[this.col];
+			this.tempValMin = null;
+			this.produit(ret);
+			this.stop();
+			return ret;
+		}
+	}
+	@Override
+	public void close() {
+		this.in.close();
+	}
+
+}
+```
+- Project
+```java
+public class Project extends Instrumentation implements Operateur{
+	private Operateur in;
+	private int[] cols;
+	
+	public Project(Operateur _in, int[] _cols) {
+		super("Project"+Instrumentation.number++);
+		this.in = _in;
+		this.cols = _cols;
+	}
+	@Override
+	public void open() {
+		this.start();
+		this.in.open();	
+		this.tuplesProduits = 0;
+		this.memoire = 0;
+		this.stop();
+	}
+	@Override
+	public Tuple next() {
+		this.start();
+		Tuple temp = null;
+		Tuple ret = new Tuple(this.cols.length);
+		if((temp=this.in.next())==null) {
+			this.stop();
+			return null;
+		}
+		else{
+			for(int i=0;i<this.cols.length;i++)
+				ret.val[i] = temp.val[this.cols[i]];
+		}
+		this.produit(ret);
+		this.stop();
+		return ret;
+	}
+	@Override
+	public void close() {
+		this.in.close();
+	}
+}
+```
+- FiltreEgalite
+```java
+public class FiltreEgalite extends Instrumentation implements Operateur {
+	private Operateur in;
+	private int col;
+	private int val;
+	// Operateur qui produit les tuples v�rifiant attribut _col = _val
+	public FiltreEgalite(Operateur _in, int _col, int _val){
+		super("FiltreEgalite"+Instrumentation.number++);
+		this.in = _in;
+		this.col = _col;
+		this.val = _val;
+	}
+	@Override
+	public void open() {
+		this.start();
+		this.in.open();
+		this.tuplesProduits = 0;
+		this.memoire = 0;
+		this.stop();
+	}
+	@Override
+	public Tuple next() {
+		this.start();
+		Tuple t = null;
+		while((t=(this.in.next()))!=null){
+			if(t.val[this.col]==this.val){
+				this.produit(t);
+				this.stop();
+				return t;
+			}
+			else{
+				this.stop();
+				return this.next();
+			}
+		}
+		this.stop();
+		return t;
+	}
+	@Override
+	public void close() {
+		this.in.close();		
+	}
+}
+```
+
+# Dégré d'isolation
+## Le mode READ UNCOMMITTED
+Choisissez "READ UNCOMMITTED" dans le menu déroulant.
+Appuyez sur Réinitialiser.
+Appuyez dans l'ordre dans la partie gauche sur les boutons Select V1, Update V1, Select V1. Appuyez sur Select V1 dans la partie droite.
+Effectuez un rollback de T1, suivi d'un Select V1 dans la partie gauche.
+Vous devriez observer le comportement suivant: T1 soit ses propres mises à jour, ce qui est cohérent. Dans ce mode, T2 voit également les mises à jour de T1, ce qui est dangereux.
+
+Après le rollback, la base est revenue à son état initial. Mais T2 a conservé dans sa variable locale une information qui n'existe plus. Si vous continuez à effectuer la réservation avec T2, vous arrivez à une incohérence.
+
+EXPLICATION
+Ce mode correspond à l'absence à peu près totale d'isolation. Il est très fluide, mais autorise des incohérences fréquentes. Mieux vaut totalement l'éviter.
+
+## Le mode READ COMMITTED
+Choisissez "READ COMMITTED" dans le menu déroulant.
+Appuyez sur Réinitialiser.
+Appuyez dans l'ordre dans la partie gauche sur les boutons Select V1, Update V1, Select V1. Appuyez sur Select V1 dans la partie droite.
+Effectuez un commit de T1, suivi d'un Select V1 dans la partie gauche.
+Vous devriez observer le comportement suivant: T1 soit ses propres mises à jour, ce qui est cohérent. Dans ce mode, T2 ne voit pas les mises à jour de T1 dans que ce dernier n'a pas validé.
+
+Après le commit, T2 voit la mise à jour de T1. On peut remarquer que T2 effectue deux fois la même lecture, avant et après le commit, sans obtenir les mêmes résultats. Les lectures ne sont pas répétables, ce qui est un facteur d'incohérence potentiel.
+
+## Le mode REPEATABLE READ
+Choisissez "REPEATABLE READ" dans le menu déroulant.
+Appuyez sur Réinitialiser.
+Appuyez dans l'ordre dans la partie gauche sur les boutons Select V1, Update V1, Select V1. Appuyez sur Select V1 dans la partie droite.
+Effectuez un commit de T1, suivi d'un Select V1 dans la partie droite.
+Effectuez un commit de T2, suivi d'un Select V1 dans la partie droite.
+Vous devriez observer au début le même comportement qu'en READ COMMITTED: T2 ne voit pas les mises à jour de T1.
+
+Après le commit de T1, T2 ne voit toujours pas la mise à jour de T1. Dans le mode REAPATABLE READ, une transaction voit l'état de la base non pas au moment où la requête s'effectue mais au moment où la transaction a commencé. Cela garantit la cohérence des lectures d'une même transaction.
+
+Après un commit ou un rollback de T2, une nouvelle transaction commence. Si elle début après le commit de T1, les mises à jour de cette dernière sont visibles: T2 voit l'état de la base au moment où elle débute.
+
+## Le mode SERIALIZABLE
+Finalement, mettez-vous en mode SERIALIZABLE et refaites le troisième exercice. Voyez-vous une différence?
+
+En mode SERIALIZABLE, l'isolation des lectures est identique à celle du mode REPEATABLE READ. Ce mode se distingue par un niveau de protection complémentaire contre des séquences combinant lectures et mises à jour.
